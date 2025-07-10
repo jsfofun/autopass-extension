@@ -1,55 +1,39 @@
 import browser from "webextension-polyfill";
+import { v3 as hash } from "murmurhash";
 
-function handleFormSubmit(event: Event) {
-  const form = event.target as HTMLFormElement;
-  const formData = new FormData(form);
-  const formValues: Record<string, any> = {};
-  let some_key_has_password = false;
+async function handleFormSubmit(event: Event) {
+    console.log(event);
+    // Skip if the event target isn't a form
+    if (!(event.target instanceof HTMLFormElement)) return;
 
-  formData.forEach((value, key) => {
-    if (key.includes("password")) some_key_has_password = true;
-    if (formValues[key]) {
-      formValues[key] = [...formValues[key], value];
-    } else {
-      formValues[key] = value;
-    }
-  });
+    const form = event.target;
+    const formData = new FormData(form);
+    const formValues: Record<string, any> = {};
+    let login = String(hash(JSON.stringify(formData)));
 
-  if (!some_key_has_password) return;
+    // Process form data
+    formData.forEach((value, key) => {
+        if (formValues[key]) {
+            formValues[key] = Array.isArray(formValues[key]) ? [...formValues[key], value] : [formValues[key], value];
+        } else {
+            formValues[key] = value;
+        }
+    });
 
-  browser.runtime
-    .sendMessage({
-      type: "FORM_SUBMIT",
-      data: {
-        url: window.location.href,
-        formId: form.id || null,
-        formClass: form.className || null,
-        values: formValues,
-      },
-    })
-    .catch((error) => console.error("Unable to send message:", error));
+    // Send data to background script
+    await browser.runtime
+        .sendMessage({
+            type: "FORM_SUBMIT",
+            data: {
+                url: window.location.href,
+                formId: form.id || null,
+                formClass: form.className || null,
+                values: formValues,
+                login,
+            },
+        })
+        .catch((error) => console.error("Message send failed:", error));
 }
 
-document.querySelectorAll("form").forEach((form) => {
-  form.addEventListener("submit", handleFormSubmit);
-});
-
-const observer = new MutationObserver((mutations) => {
-  mutations.forEach((mutation) => {
-    mutation.addedNodes.forEach((node) => {
-      if (node.nodeName === "FORM") {
-        (node as HTMLFormElement).addEventListener("submit", handleFormSubmit);
-      }
-      if (node instanceof HTMLElement) {
-        node.querySelectorAll("form").forEach((form) => {
-          form.addEventListener("submit", handleFormSubmit);
-        });
-      }
-    });
-  });
-});
-
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-});
+// Single event listener at the document level (capturing phase)
+document.addEventListener("submit", handleFormSubmit, true);

@@ -19,6 +19,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "murmurhash": "^2.0.1",
     "webextension-polyfill": "^0.12.0"
   }
 }
