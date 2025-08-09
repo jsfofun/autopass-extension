@@ -1,6 +1,6 @@
 import browser from "webextension-polyfill";
 import api from "./api";
-console.log("Background script started");
+
 api.getRequest(
     "/user/login",
     {
@@ -9,6 +9,7 @@ api.getRequest(
     },
     "POST",
 ).catch(console.error);
+
 browser.runtime.onMessage.addListener((message: any, sender: browser.Runtime.MessageSender) => {
     console.log(message);
     if (message.type === "FORM_SUBMIT") {

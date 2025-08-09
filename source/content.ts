@@ -25,7 +25,7 @@ async function handleFormSubmit(event: Event) {
         .sendMessage({
             type: "FORM_SUBMIT",
             data: {
-                url: window.location.href,
+                url: window.location.hostname,
                 formId: form.id || null,
                 formClass: form.className || null,
                 values: formValues,
