@@ -8,16 +8,13 @@ async function handleFormSubmit(event: Event) {
 
     const form = event.target;
     const formData = new FormData(form);
-    const formValues: Record<string, any> = {};
-    let login = String(hash(JSON.stringify(formData)));
+    const formValues: Record<string, string> = {};
+    const login = String(hash(JSON.stringify(formData)));
 
     // Process form data
     formData.forEach((value, key) => {
-        if (formValues[key]) {
-            formValues[key] = Array.isArray(formValues[key]) ? [...formValues[key], value] : [formValues[key], value];
-        } else {
-            formValues[key] = value;
-        }
+        if (value instanceof File) return;
+        formValues[key] = value;
     });
 
     // Send data to background script

@@ -1,10 +1,14 @@
-// import TicTacToeGame from "@app/games/tic-tac-toe";
-
-import App from "../App";
+import { Button } from "@/components/ui/button";
 
 const OptionsPage: React.FC = () => {
-    // return <TicTacToeGame />;
-    return <App />;
+    return (
+        <div>
+            <div>
+                <h1>Options</h1>
+                <Button>Hello</Button>
+            </div>
+        </div>
+    );
 };
 
 export default OptionsPage;
