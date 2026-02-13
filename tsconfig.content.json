@@ -2,10 +2,8 @@
     "compilerOptions": {
         "target": "ES2020",
         "module": "none",
-        "lib": [
-            "ES2020",
-            "DOM"
-        ],
+        "moduleResolution": "node",
+        "lib": ["ES2020", "DOM"],
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
@@ -13,11 +11,7 @@
         "noImplicitAny": true,
         "sourceMap": true,
         "outDir": "./dist/content",
-        "types": [
-            "webextension-polyfill"
-        ]
+        "types": ["webextension-polyfill"]
     },
-    "include": [
-        "src/content/**/*.ts"
-    ]
+    "include": ["src/content/**/*.ts"]
 }

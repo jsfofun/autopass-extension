@@ -1,3 +1,5 @@
+import browser from "webextension-polyfill";
+
 export function getDeviceInfo() {
     const userAgent = navigator.userAgent;
     const platform = navigator.platform;
@@ -26,6 +28,7 @@ export function getDeviceInfo() {
     };
 }
 
-await browser.storage.local.set({
-    deviceInfo: getDeviceInfo(),
-});
+/** Persists device info to storage. Call on extension init. */
+export async function saveDeviceInfo(): Promise<void> {
+    await browser.storage.local.set({ deviceInfo: getDeviceInfo() });
+}

@@ -1,28 +1,51 @@
+import type { FormSubmitPayload } from "../shared/types/form-submit";
 import { default as browser } from "webextension-polyfill";
 import api from "./api";
 
-browser.runtime.onMessage.addListener((message: any, sender: browser.Runtime.MessageSender) => {
-    console.log(message);
-    if (message.type === "FORM_SUBMIT") {
-        const { url, formId, formClass, values, login } = message.data;
-        const jsonData = JSON.stringify({
-            hash_data: login,
-            fields: values,
-            form_classname: formClass,
-            form_id: formId,
-            website: url,
-        });
+function isFormSubmit(
+    msg: unknown,
+): msg is { type: "FORM_SUBMIT"; data: FormSubmitPayload["data"] } {
+    return (
+        typeof msg === "object" &&
+        msg !== null &&
+        "type" in msg &&
+        (msg as { type: string }).type === "FORM_SUBMIT" &&
+        "data" in msg &&
+        typeof (msg as { data: unknown }).data === "object"
+    );
+}
 
-        api.UpsertSave({
-            hash_data: login,
-            fields: values,
-            form_classname: formClass,
-            form_id: formId,
-            website: url,
-        });
-        return Promise.resolve();
-    }
-    if (message.action === "getUrl") {
-        return Promise.resolve(sender.tab?.url);
-    }
-});
+browser.runtime.onMessage.addListener(
+    (message: unknown, sender: browser.Runtime.MessageSender) => {
+        if (isFormSubmit(message)) {
+            const { url, formId, formClass, values, login } = message.data;
+
+            const payload = {
+                website: url,
+                hash_data: login,
+                form_id: formId ?? "",
+                form_classname: formClass ?? "",
+                fields: values,
+            };
+
+            return api
+                .UpsertSave(payload)
+                .then(() => undefined)
+                .catch((err) => {
+                    console.error("[AutoPass] Failed to save form credentials:", err);
+                    throw err;
+                });
+        }
+
+        if (
+            typeof message === "object" &&
+            message !== null &&
+            "action" in message &&
+            (message as { action: string }).action === "getUrl"
+        ) {
+            return Promise.resolve(sender.tab?.url);
+        }
+
+        return undefined;
+    },
+);

@@ -1,8 +1,8 @@
-import { UpsertSaveBody, UsersLoginBody } from "@autopass/schemas";
-import { Save } from "../../shared/types/saves";
-import Hash from "../../shared/utils/hashing";
+import type { UpsertSaveBody, UsersLoginBody } from "@autopass/schemas";
+import type { Save } from "../../shared/types/saves";
 import { SERVER_PUBLIC_KEY_PEM } from "../key";
-import { AES, SERVER_PUBLIC_KEY } from "../utils/aes";
+import { AES, encryptWithAesGcm, SERVER_PUBLIC_KEY } from "../utils/aes";
+import { getOrCreateCredentialKey } from "../utils/credential-key";
 
 class API {
     #uri: string;
@@ -49,10 +49,15 @@ class API {
     }
 
     async UpsertSave(data: UpsertSaveBody) {
-        const hashed = await Hash.encrypt("example", JSON.stringify(data));
-        const decrypted = await Hash.decrypt("example", hashed);
-        console.log(`hashed`, hashed, `parsed`, decrypted);
-        return this.xhr("/save", data, "PUT") as Promise<Save>;
+        const key = await getOrCreateCredentialKey();
+        const plainFields = JSON.stringify(data.fields);
+        const encryptedFields = await encryptWithAesGcm(key, plainFields);
+
+        const payload = {
+            ...data,
+            fields: { _encrypted: encryptedFields } as Record<string, string>,
+        };
+        return this.xhr("/save", payload, "PUT") as Promise<Save>;
     }
 
     async registerAesKeyWithServer(aesKey: CryptoKey) {
@@ -75,15 +80,13 @@ class API {
         const aesKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedAesKey)));
 
         // 3. Шифрование AES-ключа публичным ключом сервера (RSA-OAEP)
+        const serverKey = await SERVER_PUBLIC_KEY.get();
         const encryptedAesKey = await crypto.subtle.encrypt(
             { name: "RSA-OAEP" },
-            SERVER_PUBLIC_KEY,
+            serverKey,
             new TextEncoder().encode(aesKeyBase64),
         );
-
-        // 4. Отправка на сервер
         body.public_key = btoa(String.fromCharCode(...new Uint8Array(encryptedAesKey)));
-
         // await fetch("https://your-server.com/api/keys/register", {
         //     method: "POST",
         //     body: JSON.stringify({ userId, encryptedAesKey: key }),
@@ -99,14 +102,12 @@ class API {
         const exportedAesKey = await crypto.subtle.exportKey("raw", aesKey);
         const aesKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedAesKey)));
 
-        // 3. Шифрование AES-ключа публичным ключом сервера (RSA-OAEP)
+        const serverKey = await SERVER_PUBLIC_KEY.get();
         const encryptedAesKey = await crypto.subtle.encrypt(
             { name: "RSA-OAEP" },
-            SERVER_PUBLIC_KEY,
+            serverKey,
             new TextEncoder().encode(aesKeyBase64),
         );
-
-        // 4. Отправка на сервер
         body.public_key = btoa(String.fromCharCode(...new Uint8Array(encryptedAesKey)));
         return this.xhr("/login", body, "PUT");
     }

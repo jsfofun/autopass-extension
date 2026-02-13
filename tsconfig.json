@@ -1,8 +1,4 @@
 {
-  "extends": [
-    "./tsconfig.background.json",
-    "./tsconfig.content.json"
-  ],
   "files": [],
   "references": [
     {
@@ -10,6 +6,12 @@
     },
     {
       "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.content.json"
+    },
+    {
+      "path": "./tsconfig.background.json"
     }
   ],
   "compilerOptions": {

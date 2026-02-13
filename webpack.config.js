@@ -22,7 +22,12 @@ export default {
         rules: [
             {
                 test: /\.ts$/,
-                use: "ts-loader",
+                use: {
+                    loader: "ts-loader",
+                    options: {
+                        configFile: _resolve(__dirname, "tsconfig.webpack.json"),
+                    },
+                },
                 exclude: /node_modules/,
             },
         ],

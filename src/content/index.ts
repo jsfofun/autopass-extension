@@ -1,36 +1,39 @@
+import type { FormSubmitPayload } from "../shared/types/form-submit";
 import browser from "webextension-polyfill";
 import { v3 as hash } from "murmurhash";
+import {
+    isAuthForm,
+    parseFormValues,
+    createFormFingerprint,
+} from "./auth-form-parser";
 
-async function handleFormSubmit(event: Event) {
-    console.log(event);
-    // Skip if the event target isn't a form
+async function handleFormSubmit(event: Event): Promise<void> {
     if (!(event.target instanceof HTMLFormElement)) return;
-
     const form = event.target;
-    const formData = new FormData(form);
-    const formValues: Record<string, string> = {};
-    const login = String(hash(JSON.stringify(formData)));
 
-    // Process form data
-    formData.forEach((value, key) => {
-        if (value instanceof File) return;
-        formValues[key] = value;
-    });
+    if (!isAuthForm(form)) return;
 
-    // Send data to background script
+    const values = parseFormValues(form);
+    if (!values.password) return;
+
+    const website = window.location.hostname;
+    const formAction = (form.action || window.location.href).split("?")[0];
+    const fingerprint = createFormFingerprint(website, formAction, Object.keys(values));
+    const loginHash = String(hash(fingerprint));
+
     await browser.runtime
         .sendMessage({
             type: "FORM_SUBMIT",
             data: {
-                url: window.location.hostname,
-                formId: form.id || null,
-                formClass: form.className || null,
-                values: formValues,
-                login,
+                url: website,
+                formAction,
+                formId: form.id || "",
+                formClass: form.className || "",
+                values,
+                login: loginHash,
             },
-        })
-        .catch((error) => console.error("Message send failed:", error));
+        } satisfies FormSubmitPayload)
+        .catch((err) => console.error("[AutoPass] Failed to send form data:", err));
 }
 
-// Single event listener at the document level (capturing phase)
 document.addEventListener("submit", handleFormSubmit, true);
