@@ -24,11 +24,11 @@
         "type": "module"
     },
     "options_ui": {
-        "page": "./options.html",
+        "page": "./dist/options.html",
         "open_in_tab": false
     },
     "action": {
-        "default_popup": "popup.html"
+        "default_popup": "./dist/popup.html"
     },
     "permissions": [
         "activeTab",

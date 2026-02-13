@@ -1,5 +1,20 @@
 import { default as browser } from "webextension-polyfill";
-import api from "./api";
+import api from "../src/background/api";
+// import { AES } from "./utils/aes";
+
+// console.log("Background script started");
+// const data = {
+//     password: "password",
+//     username: "example",
+// };
+// api.getRequest(
+//     "/user/login",
+//     {
+//         password: "password",
+//         username: "example",
+//     },
+//     "POST",
+// ).catch(console.error);
 
 browser.runtime.onMessage.addListener((message: any, sender: browser.Runtime.MessageSender) => {
     console.log(message);
