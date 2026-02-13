@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "ESNext",
+        "moduleResolution": "node",
+        "lib": [
+            "ES2020",
+            "WebWorker",
+            "DOM"
+        ],
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "noImplicitAny": true,
+        "sourceMap": true,
+        "outDir": "./dist/background",
+        "types": [
+            "webextension-polyfill"
+        ]
+    },
+    "include": [
+        "src/background/**/*.ts"
+    ]
+}
