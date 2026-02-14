@@ -1,5 +1,3 @@
-import { SERVER_PUBLIC_KEY_PEM } from "../key";
-
 function pemToArrayBuffer(pem: string): ArrayBuffer {
     const pemHeader = "-----BEGIN PUBLIC KEY-----";
     const pemFooter = "-----END PUBLIC KEY-----";
@@ -19,18 +17,19 @@ function uint8ArrayToBase64(arr: Uint8Array): string {
 }
 
 let _serverPublicKey: CryptoKey | null = null;
+let _lastPem: string | null = null;
 
-/** Lazy-load server public key to avoid top-level await. */
-async function getServerPublicKey(): Promise<CryptoKey> {
-    if (!_serverPublicKey) {
-        _serverPublicKey = await crypto.subtle.importKey(
-            "spki",
-            pemToArrayBuffer(SERVER_PUBLIC_KEY_PEM),
-            { name: "RSA-OAEP", hash: "SHA-256" },
-            false,
-            ["encrypt"],
-        );
-    }
+/** Imports server RSA public key from PEM. Caches by PEM content. */
+export async function getServerPublicKey(pem: string): Promise<CryptoKey> {
+    if (_serverPublicKey && _lastPem === pem) return _serverPublicKey;
+    _lastPem = pem;
+    _serverPublicKey = await crypto.subtle.importKey(
+        "spki",
+        pemToArrayBuffer(pem),
+        { name: "RSA-OAEP", hash: "SHA-256" },
+        false,
+        ["encrypt"],
+    );
     return _serverPublicKey;
 }
 
@@ -104,8 +103,6 @@ export async function decryptWithAesGcm(key: CryptoKey, ciphertextBase64: string
     );
     return new TextDecoder().decode(decrypted);
 }
-
-export const SERVER_PUBLIC_KEY = { get: getServerPublicKey };
 
 export const AES = {
     generateAesKey,

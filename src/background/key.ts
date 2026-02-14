@@ -1,9 +1,11 @@
-export const SERVER_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnlTbRUK7e4EceN8TqeEt
-c0lZQyTl150LIHJeHfGFb79QMeC0cX6jPUYPnMijeQMcJ9p1/VN7SHA55eagmnHI
-T8aaLLF+WKBX67XHjG6Nv5xw1xIhVbuRsIeEfathJToPiVAh0qlyHgmnaJ+JhdXj
-lEG+YHZsJRzXOCL57zl5D4VI3eY9P6I068wGXtWlQm8fAsqQq11O2KNCSYlBvFia
-jZV4c2aBt9/0Gbn9ZBYZsLSEPVXscC1DR5D1BzfORMVfWGUGIc7h1K7xOp2s2hUG
-ABen0GJaZUcXWZiHWlyrLqgG444Tzzve21g48aJgZGYIhwXVjAIOhz7CUumCoPTB
-swIDAQAB
------END PUBLIC KEY-----`;
+let _cachedPem: string | null = null;
+
+/** Fetches server RSA public key from GET {baseUrl}/keys/public. Caches result. */
+export async function fetchServerPublicKeyPem(baseUrl = "http://localhost:1212/api"): Promise<string> {
+    if (_cachedPem) return _cachedPem;
+    const res = await fetch(`${baseUrl}/keys/public`, { credentials: "include" });
+    if (!res.ok) throw new Error("Failed to fetch server public key");
+    const data = (await res.json()) as { public_key: string };
+    _cachedPem = data.public_key;
+    return _cachedPem;
+}
