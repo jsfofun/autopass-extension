@@ -17,7 +17,7 @@
         "outDir": "./dist/background",
         "types": [
             "webextension-polyfill"
-        ]
+        ],
     },
     "include": [
         "src/background/**/*.ts"

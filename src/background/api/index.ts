@@ -1,8 +1,8 @@
 import type { UpsertSaveBody, UsersLoginBody } from "@autopass/schemas";
 import type { Save } from "../../shared/types/saves";
 import { fetchServerPublicKeyPem } from "../key";
-import { AES, encryptWithAesGcm, getServerPublicKey } from "../utils/aes";
-import { getOrCreateCredentialKey } from "../utils/credential-key";
+import { AES, decryptWithAesGcm, encryptWithAesGcm, getServerPublicKey } from "../utils/aes";
+import { getOrCreateCredentialKey, hasCredentialKey } from "../utils/credential-key";
 
 class API {
     #uri: string;
@@ -117,6 +117,35 @@ class API {
 
     async Logout() {
         return this.xhr("/user/logout", undefined, "DELETE");
+    }
+
+    /** Fetches all saves for the current user. */
+    async getSavesList(): Promise<Save[]> {
+        return this.xhr("/save", undefined, "GET") as Promise<Save[]>;
+    }
+
+    /** Decrypts save fields using the credential key. Returns {} on failure (no key, key mismatch, corrupt data). */
+    async decryptSaveFields(encryptedFields: { _encrypted?: string }): Promise<Record<string, string>> {
+        const enc = encryptedFields._encrypted;
+        if (!enc || typeof enc !== "string") return {};
+        if (!(await hasCredentialKey())) return {};
+        try {
+            const key = await getOrCreateCredentialKey();
+            const plain = await decryptWithAesGcm(key, enc);
+            const parsed = JSON.parse(plain) as Record<string, unknown>;
+            const out: Record<string, string> = {};
+            for (const [k, v] of Object.entries(parsed)) {
+                if (typeof v === "string") out[k] = v;
+            }
+            return out;
+        } catch (err) {
+            if (err instanceof DOMException && err.name === "OperationError") {
+                console.warn("[AutoPass] Decryption failed — credential key may have changed (reinstall/clear data)");
+            } else {
+                console.warn("[AutoPass] Decryption failed:", err);
+            }
+            return {};
+        }
     }
 }
 // "http://localhost:1212/api/user/register"

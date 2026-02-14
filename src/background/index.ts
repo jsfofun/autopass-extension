@@ -112,5 +112,64 @@ browser.runtime.onMessage.addListener((message: unknown, sender: browser.Runtime
         return Promise.resolve(sender.tab?.url);
     }
 
+    if (
+        typeof message === "object" &&
+        message !== null &&
+        "action" in message &&
+        (message as { action: string }).action === "getCredentialsForOrigin"
+    ) {
+        const { origin, pageUrl } = message as { action: string; origin: string; pageUrl?: string };
+        if (!origin || typeof origin !== "string") return Promise.resolve([]);
+
+        return browser.storage.local
+            .get(AUTH_STORAGE_KEY)
+            .then((stored) => {
+                if (!stored[AUTH_STORAGE_KEY]) return [];
+                return api.getSavesList();
+            })
+            .then(async (saves) => {
+                if (!saves || !Array.isArray(saves)) return [];
+                const urlNoQuery = pageUrl ? pageUrl.split("?")[0] : null;
+                const matching = saves
+                    .filter((s) => {
+                        if (!s.website) return false;
+                        try {
+                            return new URL(s.website).origin === origin;
+                        } catch {
+                            return s.website.startsWith(origin);
+                        }
+                    })
+                    .sort((a, b) => {
+                        if (!urlNoQuery) return 0;
+                        const aMatch = a.website?.split("?")[0] === urlNoQuery ? 1 : 0;
+                        const bMatch = b.website?.split("?")[0] === urlNoQuery ? 1 : 0;
+                        return bMatch - aMatch;
+                    });
+                const result: Array<{ username: string; password: string }> = [];
+                for (const save of matching) {
+                    const raw = save.fields as {
+                        _encrypted?: string;
+                        username?: string;
+                        password?: string;
+                        email?: string;
+                        login?: string;
+                    };
+                    let username = raw.username ?? raw.email ?? raw.login;
+                    let password = raw.password;
+                    if (!username || !password) {
+                        const decrypted = await api.decryptSaveFields(raw);
+                        username = decrypted.username ?? decrypted.email ?? decrypted.login;
+                        password = decrypted.password;
+                    }
+                    if (username && password) result.push({ username, password });
+                }
+                return result;
+            })
+            .catch((err) => {
+                console.error("[AutoPass] Failed to get credentials:", err);
+                return [];
+            });
+    }
+
     return undefined;
 });

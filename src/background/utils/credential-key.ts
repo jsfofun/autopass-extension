@@ -4,6 +4,14 @@ import { AES } from "./aes";
 const STORAGE_KEY = "autopass_credential_aes_key";
 
 /**
+ * Returns true if credential key exists in storage (was created by a prior save).
+ */
+export async function hasCredentialKey(): Promise<boolean> {
+    const stored = await browser.storage.local.get(STORAGE_KEY);
+    return typeof stored[STORAGE_KEY] === "string";
+}
+
+/**
  * Returns the credential encryption key. Generates and persists one if missing.
  */
 export async function getOrCreateCredentialKey(): Promise<CryptoKey> {

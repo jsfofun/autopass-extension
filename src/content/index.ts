@@ -1,13 +1,84 @@
+/**
+ * Content script — DOM analysis, value injection, form submit interception.
+ * No cryptography. No storage. Communicates with background via messages.
+ */
+
 import type { FormSubmitPayload } from "../shared/types/form-submit";
 import browser from "webextension-polyfill";
 import { v3 as hash } from "murmurhash";
+import {
+    findPasswordInputs,
+    findUsernameForPassword,
+    countPasswordInputs,
+} from "./heuristics";
 import {
     isAuthForm,
     parseFormValues,
     createFormFingerprint,
 } from "./auth-form-parser";
+import { attachAutofillButton } from "./autofill-button";
 
-async function handleFormSubmit(event: Event): Promise<void> {
+const SCAN_DEBOUNCE_MS = 150;
+
+type Credential = { username: string; password: string };
+
+function injectValue(input: HTMLInputElement, value: string): void {
+    input.value = value;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+async function getCredentials(): Promise<Credential[]> {
+    const origin = location.origin;
+    const pageUrl = location.href;
+    const list = (await browser.runtime
+        .sendMessage({ action: "getCredentialsForOrigin", origin, pageUrl })
+        .catch(() => [])) as Credential[];
+    return Array.isArray(list) ? list : [];
+}
+
+function processPair(passwordInput: HTMLInputElement, usernameInput: HTMLInputElement): void {
+    attachAutofillButton(usernameInput, { username: usernameInput, password: passwordInput }, getCredentials, injectValue);
+    attachAutofillButton(passwordInput, { username: usernameInput, password: passwordInput }, getCredentials, injectValue);
+}
+
+async function scanForLoginCandidates(): Promise<void> {
+    const passwordInputs = findPasswordInputs(document);
+
+    for (const passwordInput of passwordInputs) {
+        const usernameInput = findUsernameForPassword(passwordInput);
+        if (!usernameInput) continue;
+
+        processPair(passwordInput, usernameInput);
+
+        const credentials = await getCredentials();
+        if (credentials.length === 0) continue;
+        const c = credentials[0];
+        if (!c.username || !c.password) continue;
+
+        const usernameEmpty = usernameInput.value.trim() === "";
+        const passwordEmpty = passwordInput.value === "";
+        if (usernameEmpty && passwordEmpty) {
+            injectValue(usernameInput, c.username);
+            injectValue(passwordInput, c.password);
+        }
+    }
+}
+
+function debounce(fn: () => void, ms: number): () => void {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    return () => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+            timer = null;
+            fn();
+        }, ms);
+    };
+}
+
+const debouncedScan = debounce(scanForLoginCandidates, SCAN_DEBOUNCE_MS);
+
+function handleSubmit(event: Event): void {
     if (!(event.target instanceof HTMLFormElement)) return;
     const form = event.target;
 
@@ -16,12 +87,14 @@ async function handleFormSubmit(event: Event): Promise<void> {
     const values = parseFormValues(form);
     if (!values.password) return;
 
+    if (countPasswordInputs(form) >= 2) return;
+
     const website = window.location.hostname;
     const formAction = (form.action || window.location.href).split("?")[0];
     const fingerprint = createFormFingerprint(website, formAction, Object.keys(values));
     const loginHash = String(hash(fingerprint));
 
-    await browser.runtime
+    browser.runtime
         .sendMessage({
             type: "FORM_SUBMIT",
             data: {
@@ -36,4 +109,26 @@ async function handleFormSubmit(event: Event): Promise<void> {
         .catch((err) => console.error("[AutoPass] Failed to send form data:", err));
 }
 
-document.addEventListener("submit", handleFormSubmit, true);
+document.addEventListener("submit", handleSubmit, true);
+
+function startScanner(): void {
+    scanForLoginCandidates();
+    setTimeout(scanForLoginCandidates, 400);
+
+    const observer = new MutationObserver(() => {
+        debouncedScan();
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+    });
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", startScanner);
+} else if (document.body) {
+    startScanner();
+} else {
+    document.addEventListener("DOMContentLoaded", startScanner);
+}
