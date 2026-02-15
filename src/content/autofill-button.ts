@@ -101,6 +101,7 @@ export function attachAutofillButton(
     pair: { username: HTMLInputElement; password: HTMLInputElement },
     getCredentials: () => Promise<Credential[]>,
     inject: (el: HTMLInputElement, val: string) => void,
+    onFilled?: () => void,
 ): void {
     injectStyles();
     if (input.closest(".ap-wrap") || input.dataset.autopassBtn === "1") return;
@@ -143,6 +144,7 @@ export function attachAutofillButton(
                     if (fieldType === "username") inject(pair.username, c.username);
                     else inject(pair.password, c.password);
                 }
+                onFilled?.();
             },
             fieldType,
             usernameEmpty,
@@ -157,5 +159,19 @@ export function attachAutofillButton(
             document.removeEventListener("click", close);
         };
         requestAnimationFrame(() => document.addEventListener("click", close));
+    });
+}
+
+/**
+ * Удаляет все кнопки автозаполнения с страницы (при выключении настройки).
+ */
+export function removeAllAutofillButtons(): void {
+    document.querySelectorAll(".ap-wrap").forEach((wrap) => {
+        const input = wrap.querySelector("input");
+        if (input) {
+            delete input.dataset.autopassBtn;
+            wrap.parentNode?.insertBefore(input, wrap);
+        }
+        wrap.remove();
     });
 }

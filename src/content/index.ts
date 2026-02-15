@@ -16,7 +16,7 @@ import {
     parseFormValues,
     createFormFingerprint,
 } from "./auth-form-parser";
-import { attachAutofillButton } from "./autofill-button";
+import { attachAutofillButton, removeAllAutofillButtons } from "./autofill-button";
 
 const SCAN_DEBOUNCE_MS = 150;
 
@@ -37,12 +37,19 @@ async function getCredentials(): Promise<Credential[]> {
     return Array.isArray(list) ? list : [];
 }
 
+function reportUsage(): void {
+    browser.runtime.sendMessage({ action: "incrementUsageCount", origin: location.origin }).catch(() => {});
+}
+
 function processPair(passwordInput: HTMLInputElement, usernameInput: HTMLInputElement): void {
-    attachAutofillButton(usernameInput, { username: usernameInput, password: passwordInput }, getCredentials, injectValue);
-    attachAutofillButton(passwordInput, { username: usernameInput, password: passwordInput }, getCredentials, injectValue);
+    attachAutofillButton(usernameInput, { username: usernameInput, password: passwordInput }, getCredentials, injectValue, reportUsage);
+    attachAutofillButton(passwordInput, { username: usernameInput, password: passwordInput }, getCredentials, injectValue, reportUsage);
 }
 
 async function scanForLoginCandidates(): Promise<void> {
+    const enabled = (await browser.runtime.sendMessage({ action: "getAutofillState", origin: location.origin }).catch(() => true)) as boolean;
+    if (!enabled) return;
+
     const passwordInputs = findPasswordInputs(document);
 
     for (const passwordInput of passwordInputs) {
@@ -61,6 +68,7 @@ async function scanForLoginCandidates(): Promise<void> {
         if (usernameEmpty && passwordEmpty) {
             injectValue(usernameInput, c.username);
             injectValue(passwordInput, c.password);
+            reportUsage();
         }
     }
 }
@@ -110,6 +118,16 @@ function handleSubmit(event: Event): void {
 }
 
 document.addEventListener("submit", handleSubmit, true);
+
+browser.runtime.onMessage.addListener((msg: unknown) => {
+    const m = msg as { type?: string; origin?: string; enabled?: boolean };
+    if (m?.type !== "AUTOFILL_STATE_CHANGED" || m.origin !== location.origin) return;
+    if (m.enabled) {
+        debouncedScan();
+    } else {
+        removeAllAutofillButtons();
+    }
+});
 
 function startScanner(): void {
     scanForLoginCandidates();

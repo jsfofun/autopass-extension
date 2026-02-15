@@ -5,6 +5,8 @@ import { default as browser } from "webextension-polyfill";
 import api from "./api";
 
 const AUTH_STORAGE_KEY = "autopass_auth_user";
+const AUTOFILL_STATE_KEY = "autopass_autofill";
+const USAGE_COUNT_KEY = "autopass_usage";
 
 function isFormSubmit(msg: unknown): msg is { type: "FORM_SUBMIT"; data: FormSubmitPayload["data"] } {
     return (
@@ -141,7 +143,10 @@ browser.runtime.onMessage.addListener((message: unknown, sender: browser.Runtime
         "action" in message &&
         (message as { action: string }).action === "getUrl"
     ) {
-        return Promise.resolve(sender.tab?.url);
+        // Popup sends this message; sender is popup, not tab. Use active tab URL.
+        return browser.tabs
+            .query({ active: true, currentWindow: true })
+            .then((tabs) => tabs[0]?.url);
     }
 
     if (
@@ -201,6 +206,138 @@ browser.runtime.onMessage.addListener((message: unknown, sender: browser.Runtime
                 console.error("[AutoPass] Failed to get credentials:", err);
                 return [];
             });
+    }
+
+    if (
+        typeof message === "object" &&
+        message !== null &&
+        "action" in message &&
+        (message as { action: string }).action === "getAutofillState"
+    ) {
+        const { origin } = message as { action: string; origin: string };
+        if (!origin || typeof origin !== "string") return Promise.resolve(true);
+        return browser.storage.local.get(AUTOFILL_STATE_KEY).then((stored) => {
+            const map = (stored[AUTOFILL_STATE_KEY] as Record<string, boolean>) ?? {};
+            return map[origin] !== false;
+        });
+    }
+
+    if (
+        typeof message === "object" &&
+        message !== null &&
+        "action" in message &&
+        (message as { action: string }).action === "setAutofillState"
+    ) {
+        const { origin, enabled } = message as { action: string; origin: string; enabled: boolean };
+        if (!origin || typeof origin !== "string") return undefined;
+        return browser.storage.local.get(AUTOFILL_STATE_KEY).then((stored) => {
+            const map = { ...((stored[AUTOFILL_STATE_KEY] as Record<string, boolean>) ?? {}) };
+            map[origin] = enabled;
+            return browser.storage.local.set({ [AUTOFILL_STATE_KEY]: map });
+        }).then(() => {
+            // Уведомить content script активной вкладки, чтобы обновить UI без перезагрузки
+            return browser.tabs.query({ active: true, currentWindow: true });
+        }).then((tabs) => {
+            const tab = tabs[0];
+            if (tab?.id != null) {
+                browser.tabs.sendMessage(tab.id, { type: "AUTOFILL_STATE_CHANGED", origin, enabled }).catch(() => {});
+            }
+        });
+    }
+
+    if (
+        typeof message === "object" &&
+        message !== null &&
+        "action" in message &&
+        (message as { action: string }).action === "getUsageCount"
+    ) {
+        const { origin } = message as { action: string; origin: string };
+        if (!origin || typeof origin !== "string") return Promise.resolve(0);
+        return browser.storage.local.get(USAGE_COUNT_KEY).then((stored) => {
+            const map = (stored[USAGE_COUNT_KEY] as Record<string, number>) ?? {};
+            return typeof map[origin] === "number" ? map[origin] : 0;
+        });
+    }
+
+    if (
+        typeof message === "object" &&
+        message !== null &&
+        "action" in message &&
+        (message as { action: string }).action === "incrementUsageCount"
+    ) {
+        const { origin } = message as { action: string; origin: string };
+        if (!origin || typeof origin !== "string") return undefined;
+        return browser.storage.local.get(USAGE_COUNT_KEY).then((stored) => {
+            const map = { ...((stored[USAGE_COUNT_KEY] as Record<string, number>) ?? {}) };
+            map[origin] = (map[origin] ?? 0) + 1;
+            return browser.storage.local.set({ [USAGE_COUNT_KEY]: map });
+        });
+    }
+
+    if (
+        typeof message === "object" &&
+        message !== null &&
+        "action" in message &&
+        (message as { action: string }).action === "openFullClient"
+    ) {
+        const url = browser.runtime.getURL("dist/options.html");
+        return browser.tabs.create({ url }).then(() => ({}));
+    }
+
+    if (
+        typeof message === "object" &&
+        message !== null &&
+        "action" in message &&
+        (message as { action: string }).action === "getSavesListDecrypted"
+    ) {
+        return browser.storage.local.get(AUTH_STORAGE_KEY).then((stored) => {
+            if (!stored[AUTH_STORAGE_KEY]) return [];
+            return api.getSavesList();
+        }).then(async (saves) => {
+            if (!saves || !Array.isArray(saves)) return [];
+            const result: Array<{ id: string; website: string; username: string; password: string }> = [];
+            for (const save of saves) {
+                const raw = save.fields as { _encrypted?: string; username?: string; password?: string; email?: string; login?: string };
+                let username = raw?.username ?? raw?.email ?? raw?.login ?? "";
+                let password = raw?.password ?? "";
+                if (!username || !password) {
+                    const decrypted = await api.decryptSaveFields(raw ?? {});
+                    username = decrypted.username ?? decrypted.email ?? decrypted.login ?? "";
+                    password = decrypted.password ?? "";
+                }
+                result.push({
+                    id: String(save.id),
+                    website: save.website ?? "",
+                    username,
+                    password,
+                });
+            }
+            return result;
+        }).catch((err) => {
+            console.error("[AutoPass] getSavesListDecrypted failed:", err);
+            return [];
+        });
+    }
+
+    if (
+        typeof message === "object" &&
+        message !== null &&
+        "action" in message &&
+        (message as { action: string }).action === "upsertSaveManual"
+    ) {
+        const { website, username, password } = message as { action: string; website: string; username: string; password: string };
+        if (!website || typeof username !== "string" || typeof password !== "string") {
+            return Promise.reject(new Error("website, username, password required"));
+        }
+        const hash_data = String(Math.abs((website + "\n" + username).split("").reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0)));
+        const payload = {
+            website: website.trim(),
+            hash_data,
+            form_id: "",
+            form_classname: "",
+            fields: { username: username.trim(), password },
+        };
+        return api.UpsertSave(payload).then(() => ({ success: true }));
     }
 
     return undefined;
