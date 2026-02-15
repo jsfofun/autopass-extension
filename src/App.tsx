@@ -1,4 +1,5 @@
 import "./App.css";
+import { Button } from "./components/ui/button";
 
 function App() {
     return (
@@ -7,6 +8,9 @@ function App() {
             <p className="text-muted-foreground text-sm">
                 Пароли с форм сохраняются автоматически при входе на сайтах.
             </p>
+            <Button type="submit" className="w-full">
+                Войти
+            </Button>
         </div>
     );
 }

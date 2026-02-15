@@ -1,8 +1,21 @@
 import type { UpsertSaveBody, UsersLoginBody } from "@autopass/schemas";
 import type { Save } from "../../shared/types/saves";
-import { fetchServerPublicKeyPem } from "../key";
-import { AES, decryptWithAesGcm, encryptWithAesGcm, getServerPublicKey } from "../utils/aes";
-import { getOrCreateCredentialKey, hasCredentialKey } from "../utils/credential-key";
+import * as aes from "../crypto/aes";
+import {
+    createVault,
+    unlockVault,
+    getDek,
+    clearCachedDek,
+    hasCachedDek,
+} from "../crypto/vault-keys";
+import {
+    setSecretKey,
+    getSecretKey,
+    clearSecretKey,
+    secretKeyToDisplay,
+    displayToSecretKey,
+} from "../storage/secret-key";
+import { RANDOM } from "../crypto/random";
 
 class API {
     #uri: string;
@@ -10,128 +23,115 @@ class API {
         this.#uri = "http://localhost:1212/api";
     }
 
-    async xhr(url: string, body?: object, method?: RequestInit["method"]) {
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            xhr.withCredentials = true;
-
-            xhr.addEventListener("readystatechange", function () {
-                if (this.readyState === this.DONE) {
-                    /** If is unauthorized person then set "logged" to false and delete token from cookies */
-                    if (this.status >= 200 && this.status <= 300) resolve(JSON.parse(this.responseText));
-                    else reject(JSON.parse(this.responseText));
-                    // /** If  request got status errors, return nothing */ else if (this.ok === false) return undefined;
-                    /** If  request is ok, return response */
-                    console.log(this.getAllResponseHeaders());
-                }
-            });
-
-            xhr.open(method ?? "GET", `${this.#uri}${url}`);
-            xhr.setRequestHeader("Content-Type", "application/json");
-
-            if (body) xhr.send(JSON.stringify(body));
-            else xhr.send(null);
+    async xhr<T = unknown>(url: string, body?: object, method?: RequestInit["method"]): Promise<T> {
+        const res = await fetch(`${this.#uri}${url}`, {
+            method: method ?? "GET",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: body ? JSON.stringify(body) : undefined,
+        });
+        const data = await res.json();
+        if (res.status >= 200 && res.status < 300) return data as T;
+        throw Object.assign(new Error((data as { error?: string })?.error ?? "Request failed"), {
+            status: res.status,
+            ...data,
         });
     }
 
-    async getRequest(url: string, body?: object, method?: RequestInit["method"]) {
-        const req = await fetch(`${this.#uri}${url}`, {
-            method: method ?? "GET",
-            body: JSON.stringify(body),
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-        });
-        console.log(req);
-        /** If is unauthorized person then set "logged" to false and delete token from cookies */
-        if (req.status === 401) return undefined;
-        /** If  request got status errors, return nothing */ else if (req.ok === false) return undefined;
-        /** If  request is ok, return response */ else return await req.json();
+    /**
+     * Register with zero-knowledge vault.
+     * Generates Secret Key, creates vault, sends salt + encrypted_dek to server.
+     */
+    async Register(body: { username: string; password: string; device_info: string }) {
+        const secretKey = RANDOM.secretKey();
+        const { salt, encryptedDekBase64 } = await createVault(body.password, secretKey);
+
+        await setSecretKey(secretKey);
+
+        const saltB64 = btoa(String.fromCharCode(...salt));
+        const payload: UsersLoginBody = {
+            ...body,
+            salt: saltB64,
+            encrypted_dek: encryptedDekBase64,
+        };
+
+        const user = await this.xhr<{ id: bigint; username: string }>(
+            "/user/register",
+            payload,
+            "POST"
+        );
+        return user;
+    }
+
+    /**
+     * Login: fetch salt + encrypted_dek, derive Master Key, decrypt DEK, cache.
+     */
+    async Login(body: { username: string; password: string; device_info: string }) {
+        const secretKey = await getSecretKey();
+        if (!secretKey) {
+            throw new Error("Secret Key not found. Add this device with your Secret Key first.");
+        }
+
+        const res = await this.xhr<{
+            id: bigint;
+            username: string;
+            salt: string | null;
+            encrypted_dek: string | null;
+        }>("/user/login", body, "POST");
+
+        if (!res.salt || !res.encrypted_dek) {
+            throw new Error("Server did not return vault data. Account may be legacy (re-register).");
+        }
+
+        const salt = Uint8Array.from(atob(res.salt), (c) => c.charCodeAt(0));
+        await unlockVault(body.password, secretKey, salt, res.encrypted_dek);
+
+        return { id: res.id, username: res.username };
+    }
+
+    async Logout() {
+        clearCachedDek();
+        await this.xhr("/user/logout", undefined, "DELETE");
+    }
+
+    /** Add device: store Secret Key locally. Call before Login on new device. */
+    async storeSecretKeyForDevice(secretKeyDisplay: string) {
+        const sk = displayToSecretKey(secretKeyDisplay);
+        return setSecretKey(sk);
+    }
+
+    /** Get Secret Key display string (for backup / add device). */
+    async getSecretKeyDisplay(): Promise<string | null> {
+        const sk = await getSecretKey();
+        return sk ? secretKeyToDisplay(sk) : null;
     }
 
     async UpsertSave(data: UpsertSaveBody) {
-        const key = await getOrCreateCredentialKey();
+        const dek = await getDek();
         const plainFields = JSON.stringify(data.fields);
-        const encryptedFields = await encryptWithAesGcm(key, plainFields);
+        const encryptedFields = await aes.encrypt(dek, plainFields);
 
         const payload = {
             ...data,
             fields: { _encrypted: encryptedFields } as Record<string, string>,
         };
-        return this.xhr("/save", payload, "PUT") as Promise<Save>;
+        return this.xhr<Save>("/save", payload, "PUT");
     }
 
-    async registerAesKeyWithServer(aesKey: CryptoKey) {
-        const pem = await fetchServerPublicKeyPem(this.#uri);
-        const aesKeyBase64 = await AES.generatePublicKey(aesKey);
-        const key = await AES.encryptAesKeyWithRsa(aesKeyBase64, pem);
-
-        return this.xhr("/keys/register", { key }, "PUT");
-        // await fetch("https://your-server.com/api/keys/register", {
-        //     method: "POST",
-        //     body: JSON.stringify({ userId, encryptedAesKey: key }),
-        //     headers: { "Content-Type": "application/json" },
-        // });
-    }
-    async Register(body: UsersLoginBody) {
-        // 1. Генерация сессионного AES-ключа (для шифрования данных)
-        const aesKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
-
-        // 2. Экспорт AES-ключа в base64
-        const exportedAesKey = await crypto.subtle.exportKey("raw", aesKey);
-        const aesKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedAesKey)));
-
-        // 3. Шифрование AES-ключа публичным ключом сервера (RSA-OAEP)
-        const pem = await fetchServerPublicKeyPem(this.#uri);
-        const serverKey = await getServerPublicKey(pem);
-        const encryptedAesKey = await crypto.subtle.encrypt(
-            { name: "RSA-OAEP" },
-            serverKey,
-            new TextEncoder().encode(aesKeyBase64),
-        );
-        body.public_key = btoa(String.fromCharCode(...new Uint8Array(encryptedAesKey)));
-        // await fetch("https://your-server.com/api/keys/register", {
-        //     method: "POST",
-        //     body: JSON.stringify({ userId, encryptedAesKey: key }),
-        //     headers: { "Content-Type": "application/json" },
-        // });
-        return this.xhr("/user/register", body, "POST");
-    }
-    async Login(body: UsersLoginBody) {
-        // 1. Генерация сессионного AES-ключа (для шифрования данных)
-        const aesKey = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
-
-        // 2. Экспорт AES-ключа в base64
-        const exportedAesKey = await crypto.subtle.exportKey("raw", aesKey);
-        const aesKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(exportedAesKey)));
-
-        const pem = await fetchServerPublicKeyPem(this.#uri);
-        const serverKey = await getServerPublicKey(pem);
-        const encryptedAesKey = await crypto.subtle.encrypt(
-            { name: "RSA-OAEP" },
-            serverKey,
-            new TextEncoder().encode(aesKeyBase64),
-        );
-        body.public_key = btoa(String.fromCharCode(...new Uint8Array(encryptedAesKey)));
-        return this.xhr("/user/login", body, "POST");
-    }
-
-    async Logout() {
-        return this.xhr("/user/logout", undefined, "DELETE");
-    }
-
-    /** Fetches all saves for the current user. */
     async getSavesList(): Promise<Save[]> {
-        return this.xhr("/save", undefined, "GET") as Promise<Save[]>;
+        return this.xhr<Save[]>("/save", undefined, "GET");
     }
 
-    /** Decrypts save fields using the credential key. Returns {} on failure (no key, key mismatch, corrupt data). */
-    async decryptSaveFields(encryptedFields: { _encrypted?: string }): Promise<Record<string, string>> {
+    /** Decrypt save fields using cached DEK. */
+    async decryptSaveFields(encryptedFields: {
+        _encrypted?: string;
+    }): Promise<Record<string, string>> {
         const enc = encryptedFields._encrypted;
         if (!enc || typeof enc !== "string") return {};
-        if (!(await hasCredentialKey())) return {};
+        if (!hasCachedDek()) return {};
         try {
-            const key = await getOrCreateCredentialKey();
-            const plain = await decryptWithAesGcm(key, enc);
+            const dek = await getDek();
+            const plain = await aes.decryptToString(dek, enc);
             const parsed = JSON.parse(plain) as Record<string, unknown>;
             const out: Record<string, string> = {};
             for (const [k, v] of Object.entries(parsed)) {
@@ -140,15 +140,20 @@ class API {
             return out;
         } catch (err) {
             if (err instanceof DOMException && err.name === "OperationError") {
-                console.warn("[AutoPass] Decryption failed — credential key may have changed (reinstall/clear data)");
+                console.warn("[AutoPass] Decryption failed — wrong key or corrupt data");
             } else {
                 console.warn("[AutoPass] Decryption failed:", err);
             }
             return {};
         }
     }
-}
-// "http://localhost:1212/api/user/register"
-const api = new API();
 
+    /** Clear local Secret Key (e.g. full logout / remove device). */
+    async clearSecretKey() {
+        clearCachedDek();
+        await clearSecretKey();
+    }
+}
+
+const api = new API();
 export default api;

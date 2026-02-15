@@ -18,13 +18,14 @@ function isFormSubmit(msg: unknown): msg is { type: "FORM_SUBMIT"; data: FormSub
 }
 
 function isAuthRequest(msg: unknown): msg is AuthRequest {
+    const m = msg as AuthRequest;
     return (
         typeof msg === "object" &&
         msg !== null &&
         "action" in msg &&
-        ((msg as AuthRequest).action === "LOGIN" || (msg as AuthRequest).action === "REGISTER") &&
-        typeof (msg as AuthRequest).username === "string" &&
-        typeof (msg as AuthRequest).password === "string"
+        (m.action === "LOGIN" || m.action === "REGISTER") &&
+        typeof m.username === "string" &&
+        typeof m.password === "string"
     );
 }
 
@@ -55,7 +56,7 @@ browser.runtime.onMessage.addListener((message: unknown, sender: browser.Runtime
     }
 
     if (isAuthRequest(message)) {
-        const { action, username, password } = message;
+        const { action, username, password, secretKey } = message;
         const deviceInfo = getDeviceInfo();
         const device_info = deviceInfo.name.slice(0, 256);
 
@@ -63,18 +64,47 @@ browser.runtime.onMessage.addListener((message: unknown, sender: browser.Runtime
             username: username.trim().toLowerCase(),
             password,
             device_info,
-            public_key: "",
         };
 
-        const req = action === "LOGIN" ? api.Login(body) : api.Register(body);
+        if (action === "LOGIN" && secretKey) {
+            return api
+                .storeSecretKeyForDevice(secretKey)
+                .then(() => api.Login(body))
+                .then((user) => {
+                    const stored = { id: String(user.id), username: user.username };
+                    return browser.storage.local
+                        .set({ [AUTH_STORAGE_KEY]: stored })
+                        .then(() => ({ success: true, user: stored }));
+                })
+                .catch((err) => ({
+                    success: false,
+                    error: err?.message || err?.error || "Authorization failed",
+                }));
+        }
 
-        return req
-            .then((user: unknown) => {
-                const u = user as { id: bigint; username: string };
-                const stored = { id: String(u.id), username: u.username };
-                return browser.storage.local.set({ [AUTH_STORAGE_KEY]: stored }).then(() => stored);
+        if (action === "LOGIN") {
+            return api
+                .Login(body)
+                .then((user) => {
+                    const stored = { id: String(user.id), username: user.username };
+                    return browser.storage.local
+                        .set({ [AUTH_STORAGE_KEY]: stored })
+                        .then(() => ({ success: true, user: stored }));
+                })
+                .catch((err) => ({
+                    success: false,
+                    error: err?.message || err?.error || "Authorization failed",
+                }));
+        }
+
+        return api
+            .Register(body)
+            .then(async (user) => {
+                const secretKey = await api.getSecretKeyDisplay();
+                const stored = { id: String(user.id), username: user.username };
+                await browser.storage.local.set({ [AUTH_STORAGE_KEY]: stored });
+                return { success: true, user: stored, secretKey: secretKey ?? undefined };
             })
-            .then((stored) => ({ success: true, user: stored }))
             .catch((err) => ({
                 success: false,
                 error: err?.message || err?.error || "Authorization failed",
@@ -91,7 +121,9 @@ browser.runtime.onMessage.addListener((message: unknown, sender: browser.Runtime
             .Logout()
             .then(() => browser.storage.local.remove(AUTH_STORAGE_KEY))
             .then(() => ({ success: true }))
-            .catch(() => browser.storage.local.remove(AUTH_STORAGE_KEY).then(() => ({ success: true })));
+            .catch(() =>
+                browser.storage.local.remove(AUTH_STORAGE_KEY).then(() => ({ success: true }))
+            );
     }
 
     if (
