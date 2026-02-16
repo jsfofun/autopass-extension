@@ -2,7 +2,6 @@
  * Popup UI — минимальный интерфейс: toggle автозаполнения, счётчик, кнопка «Полный клиент».
  * Не перегружаем: быстрый доступ без задержек.
  */
-
 import { useEffect, useState, useCallback } from "react";
 import browser from "webextension-polyfill";
 import { Button } from "@/components/ui/button";
@@ -75,9 +74,7 @@ export default function PopupPage() {
     if (user === null) {
         return (
             <div className="flex min-w-[280px] flex-col gap-3 p-4">
-                <p className="text-muted-foreground text-sm">
-                    Войдите в полном клиенте для управления паролями.
-                </p>
+                <p className="text-muted-foreground text-sm">Войдите в полном клиенте для управления паролями.</p>
                 <Button className="w-full" onClick={handleOpenFullClient}>
                     Открыть полный клиент
                 </Button>
@@ -104,22 +101,26 @@ export default function PopupPage() {
                         "focus-visible:ring-ring outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
                         hasSite && "cursor-pointer",
                         !hasSite && "cursor-not-allowed opacity-60",
-                        autofillOn ? "bg-primary" : "bg-muted"
+                        autofillOn ? "bg-primary" : "bg-muted",
                     )}
                 >
                     <span
                         className={cn(
                             "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition",
-                            autofillOn ? "translate-x-4" : "translate-x-0.5"
+                            autofillOn ? "translate-x-4" : "translate-x-0.5",
                         )}
                     />
                 </button>
             </div>
             <p className="text-muted-foreground text-xs">
                 {hasSite ? (
-                    <>Вставок на этом сайте: <strong className="text-foreground">{usageCount}</strong></>
+                    <>
+                        Вставок на этом сайте: <strong className="text-foreground">{usageCount}</strong>
+                    </>
                 ) : (
-                    <>Вставок: <strong className="text-foreground">—</strong> (откройте страницу сайта)</>
+                    <>
+                        Вставок: <strong className="text-foreground">—</strong> (откройте страницу сайта)
+                    </>
                 )}
             </p>
             <Button variant="outline" className="w-full" onClick={handleOpenFullClient}>

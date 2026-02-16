@@ -1,0 +1,24 @@
+{
+    "$schema": "https://json.schemastore.org/babelrc.json",
+    "presets": [
+        [
+            "@babel/preset-env",
+            {
+                "targets": {
+                    "chrome": "last 1 version",
+                    "firefox": "last 1 version",
+                    "opera": "last 1 version"
+                },
+                "debug": false
+            }
+        ],
+        "@babel/preset-react",
+        "@babel/preset-typescript"
+    ],
+    "comments": false,
+    "compact": true,
+    "moduleIds": true,
+    "plugins": [
+        "@babel/plugin-transform-dynamic-import"
+    ]
+}
