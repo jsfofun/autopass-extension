@@ -1,3 +1,4 @@
+import { m } from "@/paraglide/messages";
 import { useEffect, useState } from "react";
 
 const reload_btn_reveal_time = 5000;
@@ -18,13 +19,12 @@ const Loading: React.FC = () => {
     return (
         <div className={"centralize-content"}>
             <div className={"loader"}>
-                <h4>Loading...</h4>
+                <h4>{m["common.loading"]()}</h4>
             </div>
             {showReload && (
                 <div>
-                    {/* <button onClick={() => window.Twitch.ext.actions.requestIdShare()}>Authorize</button> */}
                     <button onClick={() => window.location.reload()} className={"btn btn-primary"}>
-                        Reload
+                        {m["common.reload"]()}
                     </button>
                 </div>
             )}

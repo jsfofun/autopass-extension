@@ -12,7 +12,8 @@
     "hide": "Hide",
     "copy": "Copy",
     "copy_password": "Copy password",
-    "copy_username": "Copy username"
+    "copy_username": "Copy username",
+    "reload": "Reload"
   },
   "auth": {
     "login": "Login",
@@ -24,7 +25,26 @@
     "loginSuccess": "Login successful",
     "registerSuccess": "Register successful",
     "loginFailed": "Login failed",
-    "registerFailed": "Register failed"
+    "registerFailed": "Register failed",
+    "titleLogin": "Sign in",
+    "titleRegister": "Register",
+    "descriptionLogin": "Sign in to AutoPass (zero-knowledge: data is encrypted on device)",
+    "descriptionRegister": "Create an AutoPass account",
+    "usernamePlaceholder": "a-z, 0-9, _, - (3–31 characters)",
+    "masterPassword": "Master Password",
+    "passwordPlaceholder": "At least 6 characters",
+    "secretKeyNewDevice": "(new device)",
+    "secretKeyPlaceholder": "Paste Secret Key if this is a new device",
+    "submitLogin": "Sign in",
+    "submitRegister": "Register",
+    "loading": "Loading…",
+    "switchToRegister": "No account? Register",
+    "switchToLogin": "Already have an account? Sign in",
+    "saveSecretTitle": "Save Secret Key",
+    "saveSecretDescription": "Without this key you will **permanently** lose access to your data when changing device or reinstalling. There is no password recovery.",
+    "saveSecretHint": "Save in a secure place: screenshot, file or QR. Do not store only in the cloud.",
+    "iSavedKey": "I saved the key",
+    "authFailed": "Authorization failed"
   },
   "popup": {
     "autofill": "Autofill",

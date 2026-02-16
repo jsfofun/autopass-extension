@@ -1,4 +1,4 @@
-import { LogOut, Plus, Search, EyeOff, Eye, Copy } from "lucide-react";
+import { LogOut, Plus, Search } from "lucide-react";
 import { Button } from "./components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "./components/ui/card";
 import { Input } from "./components/ui/input";
@@ -9,24 +9,12 @@ const user = {
 function handleLogout() {
     console.log("logout");
 }
-type SaveRow = { id: string; website: string; username: string; password: string };
 
-const PASSWORD_MASK = "••••••••";
-function togglePasswordVisible(id: string) {
-    console.log("togglePasswordVisible", id);
-}
-function copyToClipboard(text: string) {
-    console.log("copyToClipboard", text);
-}
 function App() {
     const [addForm, setAddForm] = useState({ website: "", username: "", password: "" });
     const [search, setSearch] = useState("");
     const [sortBy, setSortBy] = useState<"domain" | "added">("domain");
-    const [visiblePasswords, setVisiblePasswords] = useState<Set<string>>(new Set());
-    const [adding, setAdding] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [filteredSaves, setFilteredSaves] = useState<SaveRow[]>([]);
-    const [saves, setSaves] = useState<SaveRow[]>([]);
+
     return (
         <div className="bg-background min-h-screen p-4 md:p-6">
             <div className="mx-auto max-w-4xl">
@@ -80,7 +68,7 @@ function App() {
                                     required
                                 />
                             </div>
-                            <Button type="submit" disabled={adding}>
+                            <Button type="submit">
                                 <Plus data-icon="inline-start" />
                                 Добавить
                             </Button>
@@ -122,83 +110,7 @@ function App() {
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent>
-                        {loading ? (
-                            <p className="text-muted-foreground py-8 text-center text-sm">Загрузка…</p>
-                        ) : filteredSaves.length === 0 ? (
-                            <p className="text-muted-foreground py-8 text-center text-sm">
-                                {saves.length === 0 ? "Нет сохранённых паролей." : "Ничего не найдено."}
-                            </p>
-                        ) : (
-                            <div className="overflow-x-auto rounded-lg border">
-                                <table className="w-full text-sm">
-                                    <thead>
-                                        <tr className="border-b bg-muted/50">
-                                            <th className="px-3 py-2 text-left font-medium">Домен</th>
-                                            <th className="px-3 py-2 text-left font-medium">Логин</th>
-                                            <th className="px-3 py-2 text-left font-medium">Пароль</th>
-                                            <th className="w-24 px-3 py-2" aria-label="Действия" />
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredSaves.map((row) => {
-                                            const showPw = visiblePasswords.has(row.id);
-                                            return (
-                                                <tr key={row.id} className="border-b last:border-0">
-                                                    <td
-                                                        className="max-w-[180px] truncate px-3 py-2"
-                                                        title={row.website}
-                                                    >
-                                                        {row.website}
-                                                    </td>
-                                                    <td
-                                                        className="max-w-[140px] truncate px-3 py-2"
-                                                        title={row.username}
-                                                    >
-                                                        {row.username}
-                                                    </td>
-                                                    <td className="px-3 py-2 font-mono">
-                                                        {showPw ? row.password : PASSWORD_MASK}
-                                                    </td>
-                                                    <td className="px-3 py-2">
-                                                        <div className="flex items-center gap-1">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="size-8"
-                                                                onClick={() => togglePasswordVisible(row.id)}
-                                                                title={showPw ? "Скрыть" : "Показать"}
-                                                            >
-                                                                {showPw ? <EyeOff /> : <Eye />}
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="size-8"
-                                                                onClick={() => copyToClipboard(row.password)}
-                                                                title="Копировать пароль"
-                                                            >
-                                                                <Copy />
-                                                            </Button>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="size-8"
-                                                                onClick={() => copyToClipboard(row.username)}
-                                                                title="Копировать логин"
-                                                            >
-                                                                <Copy />
-                                                            </Button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </CardContent>
+                    <CardContent></CardContent>
                 </Card>
             </div>
         </div>

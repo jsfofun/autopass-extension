@@ -1,12 +1,8 @@
-/**
- * Popup UI — минимальный интерфейс: toggle автозаполнения, счётчик, кнопка «Полный клиент».
- * Не перегружаем: быстрый доступ без задержек.
- */
 import { useEffect, useState, useCallback } from "react";
 import browser from "webextension-polyfill";
-import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { m } from "@/paraglide/messages";
+import { PopupLoading } from "@/components/popup/PopupLoading";
+import { PopupUnauth } from "@/components/popup/PopupUnauth";
+import { PopupMain } from "@/components/popup/PopupMain";
 
 type AuthUser = { id: string; username: string } | null;
 
@@ -65,40 +61,20 @@ export default function PopupPage() {
     };
 
     if (user === undefined) {
-        return (
-            <div className="flex min-h-[140px] min-w-[280px] items-center justify-center p-4">
-                <span className="text-muted-foreground text-sm">Загрузка…</span>
-            </div>
-        );
+        return <PopupLoading />;
     }
 
     if (user === null) {
-        return (
-            <div className="flex min-w-[280px] flex-col gap-3 p-4">
-                <p className="text-muted-foreground text-sm">{m["popup.login_in_full_client"]()}.</p>
-                <Button className="w-full" onClick={handleOpenFullClient}>
-                    {m["popup.openFullClient"]()}
-                </Button>
-            </div>
-        );
+        return <PopupUnauth onOpenFullClient={handleOpenFullClient} />;
     }
 
-    const hasSite = !!origin;
-
     return (
-        <div className="flex min-w-[280px] flex-col gap-4 p-4">
-            <div className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground truncate text-sm" title={origin ?? ""}>
-                    {m["popup.autofill"]()}
-                </span>
-                <Switch checked={autofillOn} onCheckedChange={handleToggleAutofill} disabled={!hasSite} />
-            </div>
-            <p className="text-muted-foreground text-xs">
-                {m["popup.insertions_count"]({ count: <strong className="text-foreground">{usageCount}</strong> })}
-            </p>
-            <Button variant="outline" className="w-full" onClick={handleOpenFullClient}>
-                {m["popup.openFullClient"]()}
-            </Button>
-        </div>
+        <PopupMain
+            origin={origin}
+            autofillOn={autofillOn}
+            usageCount={usageCount}
+            onToggleAutofill={handleToggleAutofill}
+            onOpenFullClient={handleOpenFullClient}
+        />
     );
 }

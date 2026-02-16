@@ -45,7 +45,9 @@ export default defineConfig({
     },
     plugins: [
         paraglideVitePlugin({ project: "./project.inlang", outdir: "./src/paraglide" }),
-        tailwindcss(),
+        tailwindcss({
+            // optimize: { minify: true },
+        }),
         mkcert(),
         react({}),
         tsconfigPaths({
