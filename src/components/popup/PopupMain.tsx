@@ -10,13 +10,7 @@ type Props = {
     onOpenFullClient: () => void;
 };
 
-export function PopupMain({
-    origin,
-    autofillOn,
-    usageCount,
-    onToggleAutofill,
-    onOpenFullClient,
-}: Props) {
+export function PopupMain({ origin, autofillOn, usageCount, onToggleAutofill, onOpenFullClient }: Props) {
     const hasSite = !!origin;
 
     return (
@@ -27,9 +21,7 @@ export function PopupMain({
                 </span>
                 <Switch checked={autofillOn} onCheckedChange={onToggleAutofill} disabled={!hasSite} />
             </div>
-            <p className="text-muted-foreground text-xs">
-                {m["popup.insertions_count"]({ count: <strong className="text-foreground">{usageCount}</strong> })}
-            </p>
+            <p className="text-muted-foreground text-xs">{m["popup.insertions_count"]({ count: usageCount })}</p>
             <Button variant="outline" className="w-full" onClick={onOpenFullClient}>
                 {m["popup.openFullClient"]()}
             </Button>

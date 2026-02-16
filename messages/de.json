@@ -55,7 +55,7 @@
         "openFullClient": "Vollständigen Client öffnen",
         "login_in_full_client": "Im vollständigen Client anmelden, um Passwörter zu verwalten",
         "insertions_on_this_site_description": "Einfügungen auf dieser Seite",
-        "insertions_count": "{count} Einfügungen"
+        "insertions_count": "{#bold}{count}{/bold}  Einfügungen"
     },
     "main": {
         "title": "AutoPass - Vollständiger Client",

@@ -55,7 +55,7 @@
     "openFullClient": "Open full client",
     "login_in_full_client": "Войдите в полном клиенте для управления паролями",
     "insertions_on_this_site_description": "Подстановки на этом сайте",
-    "insertions_count": "{count} подстановок"
+    "insertions_count": "{#bold}{count}{/bold}  подстановок"
   },
   "main": {
     "title": "AutoPass - Full Client",

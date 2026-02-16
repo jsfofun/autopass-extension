@@ -55,7 +55,7 @@
     "openFullClient": "Open full client",
     "login_in_full_client": "Login in full client to manage passwords",
     "insertions_on_this_site_description": "Insertions on this site",
-    "insertions_count": "{count} insertions"
+    "insertions_count": "{#bold}{count}{/bold} insertions"
   },
   "main": {
     "title": "AutoPass - Full Client",
