@@ -5,7 +5,7 @@
 import { useEffect, useState, useCallback } from "react";
 import browser from "webextension-polyfill";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 
 type AuthUser = { id: string; username: string } | null;
 
@@ -90,27 +90,7 @@ export default function PopupPage() {
                 <span className="text-muted-foreground truncate text-sm" title={origin ?? ""}>
                     Автозаполнение
                 </span>
-                <button
-                    type="button"
-                    role="switch"
-                    aria-checked={autofillOn}
-                    aria-disabled={!hasSite}
-                    onClick={hasSite ? handleToggleAutofill : undefined}
-                    className={cn(
-                        "relative inline-flex h-6 w-10 shrink-0 rounded-full border-2 border-transparent transition-colors",
-                        "focus-visible:ring-ring outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-                        hasSite && "cursor-pointer",
-                        !hasSite && "cursor-not-allowed opacity-60",
-                        autofillOn ? "bg-primary" : "bg-muted",
-                    )}
-                >
-                    <span
-                        className={cn(
-                            "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition",
-                            autofillOn ? "translate-x-4" : "translate-x-0.5",
-                        )}
-                    />
-                </button>
+                <Switch checked={autofillOn} onCheckedChange={handleToggleAutofill} disabled={!hasSite} />
             </div>
             <p className="text-muted-foreground text-xs">
                 {hasSite ? (

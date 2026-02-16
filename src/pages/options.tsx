@@ -129,7 +129,7 @@ export default function OptionsPage() {
                         </p>
                     </div>
                     <Button variant="ghost" size="sm" onClick={handleLogout}>
-                        <LogOut className="mr-2 size-4" />
+                        <LogOut data-icon="inline-start" />
                         Выйти
                     </Button>
                 </header>
@@ -172,7 +172,7 @@ export default function OptionsPage() {
                                 />
                             </div>
                             <Button type="submit" disabled={adding}>
-                                <Plus className="mr-2 size-4" />
+                                <Plus data-icon="inline-start" />
                                 Добавить
                             </Button>
                         </form>
@@ -260,11 +260,7 @@ export default function OptionsPage() {
                                                                 onClick={() => togglePasswordVisible(row.id)}
                                                                 title={showPw ? "Скрыть" : "Показать"}
                                                             >
-                                                                {showPw ? (
-                                                                    <EyeOff className="size-4" />
-                                                                ) : (
-                                                                    <Eye className="size-4" />
-                                                                )}
+                                                                {showPw ? <EyeOff /> : <Eye />}
                                                             </Button>
                                                             <Button
                                                                 variant="ghost"
@@ -273,7 +269,7 @@ export default function OptionsPage() {
                                                                 onClick={() => copyToClipboard(row.password)}
                                                                 title="Копировать пароль"
                                                             >
-                                                                <Copy className="size-4" />
+                                                                <Copy />
                                                             </Button>
                                                             <Button
                                                                 variant="ghost"
@@ -282,7 +278,7 @@ export default function OptionsPage() {
                                                                 onClick={() => copyToClipboard(row.username)}
                                                                 title="Копировать логин"
                                                             >
-                                                                <Copy className="size-4" />
+                                                                <Copy />
                                                             </Button>
                                                         </div>
                                                     </td>

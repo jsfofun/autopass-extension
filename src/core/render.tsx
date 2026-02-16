@@ -16,9 +16,6 @@ const render = (node: React.ReactNode) => {
             <ErrorBoundary>
                 <Suspense fallback={<Loading />}>
                     <TooltipProvider>{node}</TooltipProvider>
-                    {/* <WithAuthentication> */}
-                    {/* <WithI18n children={node} /> */}
-                    {/* </WithAuthentication> */}
                 </Suspense>
             </ErrorBoundary>
         </React.StrictMode>,

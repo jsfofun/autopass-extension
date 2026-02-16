@@ -18,6 +18,7 @@ export default defineConfig({
         emptyOutDir: true,
         rollupOptions: {
             input: {
+                main: path.join(src, "main.html"),
                 options: path.join(src, "options.html"),
                 popup: path.join(src, "popup.html"),
                 content: path.join(src, "content/index.ts"),
