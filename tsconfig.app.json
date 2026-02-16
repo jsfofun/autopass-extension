@@ -27,6 +27,7 @@
     "esModuleInterop": true,
     "outDir": "./dist",
     "allowJs": true,
+    "incremental": false,
     "types": [
       "webextension-polyfill"
     ],
@@ -38,14 +39,9 @@
       "@app/*": [
         "src/*"
       ]
-    }
+    },
   },
   "include": [
     "src"
-  ],
-  "exclude": [
-    "src/content/**/*.ts",
-    "src/background/**/*.ts",
-    "src/shared/types/**/*.ts"
   ]
 }
