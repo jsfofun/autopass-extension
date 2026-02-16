@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import AuthPage from "./auth";
 import { Copy, Eye, EyeOff, LogOut, Plus, Search } from "lucide-react";
+import { m } from "@/paraglide/messages";
 
 type AuthUser = { id: string; username: string } | null;
 type SaveRow = { id: string; website: string; username: string; password: string };
@@ -103,7 +104,7 @@ export default function OptionsPage() {
     if (user === undefined) {
         return (
             <div className="flex min-h-screen items-center justify-center p-4">
-                <span className="text-muted-foreground">Загрузка…</span>
+                <span className="text-muted-foreground">{m["common.loading"]()}</span>
             </div>
         );
     }
@@ -123,28 +124,26 @@ export default function OptionsPage() {
             <div className="mx-auto max-w-4xl">
                 <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-semibold">AutoPass — полный клиент</h1>
+                        <h1 className="text-2xl font-semibold">{m["main.title"]()}</h1>
                         <p className="text-muted-foreground text-sm">
-                            Вход как <strong>{user.username}</strong>
+                            {m["main.loginAs"]({ username: user.username })}
                         </p>
                     </div>
                     <Button variant="ghost" size="sm" onClick={handleLogout}>
                         <LogOut data-icon="inline-start" />
-                        Выйти
+                        {m["auth.logout"]()}
                     </Button>
                 </header>
 
                 <Card className="mb-6">
                     <CardHeader>
-                        <CardTitle>Добавить пароль</CardTitle>
-                        <CardDescription>Домен, логин и пароль сохраняются в зашифрованном виде.</CardDescription>
+                        <CardTitle>{m["main.add_password"]()}</CardTitle>
+                        <CardDescription>{m["main.add_password_description"]()}</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <form onSubmit={handleAddSave} className="flex flex-col gap-3 sm:flex-row sm:items-end">
                             <div className="flex-1 space-y-1">
-                                <label className="text-muted-foreground text-xs">
-                                    Домен (например https://example.com)
-                                </label>
+                                <label className="text-muted-foreground text-xs">{m["main.domain_example"]()}</label>
                                 <Input
                                     placeholder="https://example.com"
                                     value={addForm.website}
@@ -153,7 +152,7 @@ export default function OptionsPage() {
                                 />
                             </div>
                             <div className="w-full space-y-1 sm:w-40">
-                                <label className="text-muted-foreground text-xs">Логин</label>
+                                <label className="text-muted-foreground text-xs">{m["auth.username"]()}</label>
                                 <Input
                                     placeholder="user"
                                     value={addForm.username}
@@ -162,7 +161,7 @@ export default function OptionsPage() {
                                 />
                             </div>
                             <div className="w-full space-y-1 sm:w-40">
-                                <label className="text-muted-foreground text-xs">Пароль</label>
+                                <label className="text-muted-foreground text-xs">{m["auth.password"]()}</label>
                                 <Input
                                     type="password"
                                     placeholder="••••••••"
@@ -173,7 +172,7 @@ export default function OptionsPage() {
                             </div>
                             <Button type="submit" disabled={adding}>
                                 <Plus data-icon="inline-start" />
-                                Добавить
+                                {m["main.add_password_button"]()}
                             </Button>
                         </form>
                     </CardContent>
@@ -181,15 +180,13 @@ export default function OptionsPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Сохранённые пароли</CardTitle>
-                        <CardDescription>
-                            Пароль показывается только по нажатию «показать». Копирование через кнопку.
-                        </CardDescription>
+                        <CardTitle>{m["main.saved_passwords"]()}</CardTitle>
+                        <CardDescription>{m["main.saved_passwords_description"]()}</CardDescription>
                         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                             <div className="relative flex-1">
                                 <Search className="text-muted-foreground absolute left-3 top-1/2 size-4 -translate-y-1/2" />
                                 <Input
-                                    placeholder="Поиск по домену или логину..."
+                                    placeholder={m["main.saved_passwords_search_placeholder"]()}
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     className="pl-9"
@@ -201,34 +198,34 @@ export default function OptionsPage() {
                                     size="sm"
                                     onClick={() => setSortBy("domain")}
                                 >
-                                    По домену
+                                    {m["main.sort_by_domain"]()}
                                 </Button>
                                 <Button
                                     variant={sortBy === "added" ? "default" : "outline"}
                                     size="sm"
                                     onClick={() => setSortBy("added")}
                                 >
-                                    По порядку
+                                    {m["main.sort_by_added"]()}
                                 </Button>
                             </div>
                         </div>
                     </CardHeader>
                     <CardContent>
                         {loading ? (
-                            <p className="text-muted-foreground py-8 text-center text-sm">Загрузка…</p>
+                            <p className="text-muted-foreground py-8 text-center text-sm">{m["common.loading"]()}</p>
                         ) : filteredSaves.length === 0 ? (
                             <p className="text-muted-foreground py-8 text-center text-sm">
-                                {saves.length === 0 ? "Нет сохранённых паролей." : "Ничего не найдено."}
+                                {saves.length === 0 ? m["main.no_saved_passwords"]() : m["main.no_results_found"]()}
                             </p>
                         ) : (
                             <div className="overflow-x-auto rounded-lg border">
                                 <table className="w-full text-sm">
                                     <thead>
                                         <tr className="border-b bg-muted/50">
-                                            <th className="px-3 py-2 text-left font-medium">Домен</th>
-                                            <th className="px-3 py-2 text-left font-medium">Логин</th>
-                                            <th className="px-3 py-2 text-left font-medium">Пароль</th>
-                                            <th className="w-24 px-3 py-2" aria-label="Действия" />
+                                            <th className="px-3 py-2 text-left font-medium">{m["main.domain"]()}</th>
+                                            <th className="px-3 py-2 text-left font-medium">{m["auth.username"]()}</th>
+                                            <th className="px-3 py-2 text-left font-medium">{m["auth.password"]()}</th>
+                                            <th className="w-24 px-3 py-2" aria-label={m["common.actions"]()} />
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -258,7 +255,7 @@ export default function OptionsPage() {
                                                                 size="icon"
                                                                 className="size-8"
                                                                 onClick={() => togglePasswordVisible(row.id)}
-                                                                title={showPw ? "Скрыть" : "Показать"}
+                                                                title={showPw ? m["common.hide"]() : m["common.show"]()}
                                                             >
                                                                 {showPw ? <EyeOff /> : <Eye />}
                                                             </Button>
@@ -267,7 +264,7 @@ export default function OptionsPage() {
                                                                 size="icon"
                                                                 className="size-8"
                                                                 onClick={() => copyToClipboard(row.password)}
-                                                                title="Копировать пароль"
+                                                                title={m["common.copy_password"]()}
                                                             >
                                                                 <Copy />
                                                             </Button>
@@ -276,7 +273,7 @@ export default function OptionsPage() {
                                                                 size="icon"
                                                                 className="size-8"
                                                                 onClick={() => copyToClipboard(row.username)}
-                                                                title="Копировать логин"
+                                                                title={m["common.copy_username"]()}
                                                             >
                                                                 <Copy />
                                                             </Button>

@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from "react";
 import browser from "webextension-polyfill";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { m } from "@/paraglide/messages";
 
 type AuthUser = { id: string; username: string } | null;
 
@@ -74,9 +75,9 @@ export default function PopupPage() {
     if (user === null) {
         return (
             <div className="flex min-w-[280px] flex-col gap-3 p-4">
-                <p className="text-muted-foreground text-sm">Войдите в полном клиенте для управления паролями.</p>
+                <p className="text-muted-foreground text-sm">{m["popup.login_in_full_client"]()}.</p>
                 <Button className="w-full" onClick={handleOpenFullClient}>
-                    Открыть полный клиент
+                    {m["popup.openFullClient"]()}
                 </Button>
             </div>
         );
@@ -88,23 +89,15 @@ export default function PopupPage() {
         <div className="flex min-w-[280px] flex-col gap-4 p-4">
             <div className="flex items-center justify-between gap-3">
                 <span className="text-muted-foreground truncate text-sm" title={origin ?? ""}>
-                    Автозаполнение
+                    {m["popup.autofill"]()}
                 </span>
                 <Switch checked={autofillOn} onCheckedChange={handleToggleAutofill} disabled={!hasSite} />
             </div>
             <p className="text-muted-foreground text-xs">
-                {hasSite ? (
-                    <>
-                        Вставок на этом сайте: <strong className="text-foreground">{usageCount}</strong>
-                    </>
-                ) : (
-                    <>
-                        Вставок: <strong className="text-foreground">—</strong> (откройте страницу сайта)
-                    </>
-                )}
+                {m["popup.insertions_count"]({ count: <strong className="text-foreground">{usageCount}</strong> })}
             </p>
             <Button variant="outline" className="w-full" onClick={handleOpenFullClient}>
-                Открыть полный клиент
+                {m["popup.openFullClient"]()}
             </Button>
         </div>
     );

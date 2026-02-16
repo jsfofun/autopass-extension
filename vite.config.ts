@@ -3,7 +3,7 @@ import { defineConfig } from "vite";
 import mkcert from "vite-plugin-mkcert";
 import react from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
-// import zipPack from "vite-plugin-zip-pack";
+import zipPack from "vite-plugin-zip-pack";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
 
@@ -51,10 +51,10 @@ export default defineConfig({
         tsconfigPaths({
             root: cwd,
         }),
-        // zipPack({
-        //     inDir: path.join(cwd, "dist"),
-        //     outDir: path.join(cwd, "dist"),
-        // }),
+        zipPack({
+            inDir: path.join(cwd, "dist"),
+            outDir: path.join(cwd, "build"),
+        }),
     ],
     define: {
         "globalThis.__DEV__": JSON.stringify(false),
