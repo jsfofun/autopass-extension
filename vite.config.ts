@@ -1,3 +1,4 @@
+import { paraglideVitePlugin } from "@inlang/paraglide-js";
 import { defineConfig } from "vite";
 import mkcert from "vite-plugin-mkcert";
 import react from "@vitejs/plugin-react";
@@ -43,6 +44,7 @@ export default defineConfig({
         strictPort: true,
     },
     plugins: [
+        paraglideVitePlugin({ project: "./project.inlang", outdir: "./src/paraglide" }),
         tailwindcss(),
         mkcert(),
         react({}),
