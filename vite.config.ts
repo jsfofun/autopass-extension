@@ -11,6 +11,24 @@ const cwd = process.cwd();
 
 const src = path.join(cwd, "src");
 
+/** Normalize path for cross-platform comparison (Rollup may use / or \). */
+// function norm(id: string): string {
+//     return id.replace(/\\/g, "/");
+// }
+
+/** True if this module is the background entry or is (transitively) imported by it. */
+// function isDepOfBackground(
+//     id: string,
+//     getModuleInfo: (id: string) => { importers?: readonly string[] } | null,
+//     visited = new Set<string>(),
+// ): boolean {
+//     if (visited.has(id)) return false;
+//     visited.add(id);
+//     if (norm(id).includes("background/index")) return true;
+//     const info = getModuleInfo(id);
+//     return (info?.importers ?? []).some((imp) => isDepOfBackground(imp, getModuleInfo, visited));
+// }
+
 export default defineConfig({
     base: "./",
     publicDir: path.join(cwd, "public"),
@@ -25,18 +43,36 @@ export default defineConfig({
                 content: path.join(src, "content/index.ts"),
                 background: path.join(src, "background/index.ts"),
             },
-            output: {
-                dir: path.join(cwd, "dist"),
-                entryFileNames(chunkInfo) {
-                    if (chunkInfo.name === "content") {
-                        return "content.js";
-                    } else if (chunkInfo.name === "background") {
-                        return "background.js";
-                    } else {
-                        return "entry-[name]-[hash].js";
-                    }
+            output: [
+                {
+                    dir: path.join(cwd, "dist"),
+                    format: "cjs",
+
+                    entryFileNames: (chunkInfo) => {
+                        if (chunkInfo.name === "content") {
+                            return "content.cjs.js";
+                        } else {
+                            return "content-[name]-[hash].js";
+                        }
+                    },
                 },
-            },
+                {
+                    dir: path.join(cwd, "dist"),
+                    format: "module",
+                    entryFileNames: (chunkInfo) => {
+                        if (chunkInfo.name === "background") {
+                            return "background.js";
+                        } else {
+                            return "background-[name]-[hash].js";
+                        }
+                    },
+                },
+                {
+                    dir: path.join(cwd, "dist"),
+                    entryFileNames: "entry-[name]-[hash].js",
+                    format: "es",
+                },
+            ],
         },
     },
     server: {
